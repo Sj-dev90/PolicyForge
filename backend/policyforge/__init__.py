@@ -26,6 +26,12 @@ from policyforge.models import (
     SimulationResult,
 )
 from policyforge.engine import PolicyEngine
+from policyforge.detectors import (
+    InvariantRegistry,
+    create_default_invariant_registry,
+    detect_dead_rules,
+    PolicyDetector,
+)
 
 __all__ = [
     "EventType",
@@ -52,4 +58,8 @@ __all__ = [
     "EventOutcome",
     "SimulationResult",
     "PolicyEngine",
+    "InvariantRegistry",
+    "create_default_invariant_registry",
+    "detect_dead_rules",
+    "PolicyDetector",
 ]

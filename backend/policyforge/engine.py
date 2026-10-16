@@ -119,7 +119,7 @@ def evaluate_condition_tree(
 
     if isinstance(cond, AnyCondition):
         any_passed = False
-        leaf_evals = []
+        leaf_evals: list[LeafEvaluation] = []
         for child in cond.any:
             child_passed, child_evals = evaluate_condition_tree(child, state)
             leaf_evals.extend(child_evals)
@@ -133,8 +133,15 @@ def evaluate_condition_tree(
 class PolicyEngine:
     """Deterministic simulation engine."""
 
-    def __init__(self, rules: list[Rule]) -> None:
+    def __init__(
+        self,
+        rules: list[Rule],
+        default_decision_outcome: EffectType = EffectType.DENY,
+        invariant_registry: Any = None,
+    ) -> None:
         self.rules = rules
+        self.default_decision_outcome = default_decision_outcome
+        self.invariant_registry = invariant_registry
 
     def _resolve_conflict(
         self,
@@ -147,20 +154,27 @@ class PolicyEngine:
         Returns:
             (outcome, resolution_type, active_rule_ids, suppressed_rule_ids, findings)
         """
-        # 1. No rules fired -> GAP / DEFAULT_DENY
+        # 1. No rules fired -> POLICY_GAP (with configurable default outcome)
         if not firing_rules:
+            outcome = self.default_decision_outcome
+            res_type = "DEFAULT_ALLOW" if outcome == EffectType.ALLOW else "DEFAULT_DENY"
             finding = Finding(
-                type=FindingType.GAP,
+                type=FindingType.POLICY_GAP,
                 severity=FindingSeverity.MEDIUM,
                 rule_ids=[],
                 event_indices=[event_index],
                 trace=(
-                    f"No rules fired for decision event {event.event_type.value} "
-                    f"on day {event.day}. Defaulting to DENY."
+                    f"Policy gap detected at event {event_index} (day {event.day}): "
+                    f"No rules fired for decision event '{event.event_type.value}'. "
+                    f"Default outcome '{outcome.value}' was applied."
                 ),
-                details={"event_type": event.event_type.value, "day": event.day},
+                details={
+                    "event_type": event.event_type.value,
+                    "day": event.day,
+                    "default_outcome": outcome.value,
+                },
             )
-            return EffectType.DENY, "DEFAULT_DENY", [], [], [finding]
+            return outcome, res_type, [], [], [finding]
 
         allow_rules = [r for r in firing_rules if r.effect == EffectType.ALLOW]
         deny_rules = [r for r in firing_rules if r.effect == EffectType.DENY]
@@ -196,8 +210,9 @@ class PolicyEngine:
                         rule_ids=[a.id, d.id],
                         event_indices=[event_index],
                         trace=(
-                            f"Mutual override cycle detected between {a.id} and {d.id} "
-                            f"on day {event.day}."
+                            f"Contradiction detected at event {event_index} (day {event.day}): "
+                            f"Mutual override cycle between ALLOW rule '{a.id}' and "
+                            f"DENY rule '{d.id}'."
                         ),
                         details={"rule_a": a.id, "rule_d": d.id},
                     )
@@ -274,9 +289,10 @@ class PolicyEngine:
                 rule_ids=conflicting_ids,
                 event_indices=[event_index],
                 trace=(
-                    f"Contradiction: ALLOW rules {[r.id for r in active_allow]} and "
-                    f"DENY rules {[r.id for r in active_deny]} both fired with default "
-                    f"priority 0 and no overrides on day {event.day}."
+                    f"Contradiction detected at event {event_index} (day {event.day}): "
+                    f"Conflicting outcomes with no declared precedence. "
+                    f"ALLOW rules {[r.id for r in active_allow]} and DENY rules {[r.id for r in active_deny]} "
+                    f"both fired with default priority 0 and no overrides."
                 ),
                 details={
                     "allow_rules": [r.id for r in active_allow],
@@ -299,9 +315,9 @@ class PolicyEngine:
             rule_ids=conflicting_ids,
             event_indices=[event_index],
             trace=(
-                f"Ambiguity: ALLOW rules {[r.id for r in active_allow]} and "
-                f"DENY rules {[r.id for r in active_deny]} tied at equal priority "
-                f"{max_allow_priority} on day {event.day}."
+                f"Ambiguity detected at event {event_index} (day {event.day}): "
+                f"ALLOW rules {[r.id for r in active_allow]} and DENY rules {[r.id for r in active_deny]} "
+                f"tied at equal priority {max_allow_priority} with no overriding precedence."
             ),
             details={
                 "allow_rules": [r.id for r in active_allow],
@@ -320,21 +336,64 @@ class PolicyEngine:
     def _apply_payload_attributes(self, state: State, payload: dict[str, Any]) -> None:
         """Apply non-decision payload attributes to state (e.g. item_damaged)."""
         valid_fields = {f.value: f for f in StateField}
+        bool_fields = {
+            "order_placed",
+            "item_delivered",
+            "replacement_requested",
+            "replacement_cancelled",
+            "replacement_active",
+            "replacement_completed",
+            "refund_requested",
+            "refund_completed",
+            "return_received",
+            "item_damaged",
+            "is_final_sale",
+            "item_opened",
+            "refund_eligibility_restored",
+            "action_denied",
+            "chargeback_active",
+        }
+        float_fields = {"amount_paid", "refund_amount"}
+        int_fields = {
+            "order_day",
+            "delivery_day",
+            "days_since_delivery",
+            "replacement_request_day",
+            "replacement_cancel_day",
+            "replacement_completed_day",
+            "refund_request_day",
+            "refund_completed_day",
+        }
+
         for k, v in payload.items():
             if k in valid_fields:
-                field_enum = valid_fields[k]
-                # Cast or assign directly if valid
-                setattr(state, field_enum.value, v)
+                field_name = valid_fields[k].value
+                if k in bool_fields and not isinstance(v, bool):
+                    setattr(state, field_name, bool(v))
+                elif k in float_fields and not isinstance(v, float):
+                    try:
+                        setattr(state, field_name, float(v))
+                    except (ValueError, TypeError):
+                        pass
+                elif k in int_fields and not isinstance(v, int):
+                    try:
+                        setattr(state, field_name, int(v))
+                    except (ValueError, TypeError):
+                        pass
+                else:
+                    setattr(state, field_name, v)
 
     def run(
         self,
         journey: list[Event],
         initial_state: State | None = None,
+        invariant_registry: Any = None,
     ) -> SimulationResult:
         """Simulate a customer journey deterministically."""
-        # Ensure chronological ordering
         events = sorted(journey, key=lambda e: e.day)
         state = copy.deepcopy(initial_state) if initial_state is not None else State()
+
+        registry = invariant_registry or self.invariant_registry
 
         outcomes: list[EventOutcome] = []
         event_traces: list[EventTrace] = []
@@ -350,11 +409,15 @@ class PolicyEngine:
             state.update_derived_day(event.day)
             self._apply_payload_attributes(state, event.payload)
 
+            step_findings: list[Finding] = []
+
             if event.event_type not in decision_events:
                 # Non-decision event processing
                 if event.event_type == EventType.ORDER_PLACED:
                     state.order_placed = True
                     state.order_day = event.day
+                    if "amount_paid" in event.payload:
+                        state.amount_paid = float(event.payload["amount_paid"])
                 elif event.event_type == EventType.ITEM_DELIVERED:
                     state.item_delivered = True
                     state.delivery_day = event.day
@@ -364,11 +427,32 @@ class PolicyEngine:
                 elif event.event_type == EventType.REPLACEMENT_CANCELLED:
                     state.replacement_cancelled = True
                     state.replacement_cancel_day = event.day
+                    state.replacement_active = False
                 elif event.event_type == EventType.ORDER_CANCELLED:
                     state.order_placed = False
                 elif event.event_type == EventType.RETURN_RECEIVED:
                     state.return_received = True
+                elif event.event_type == EventType.REFUND_COMPLETED:
+                    state.refund_completed = True
+                    state.refund_completed_day = event.day
+                    if "refund_amount" in event.payload:
+                        state.refund_amount = float(event.payload["refund_amount"])
+                    elif state.refund_amount == 0.0 and state.amount_paid > 0.0:
+                        state.refund_amount = state.amount_paid
+                elif event.event_type == EventType.REPLACEMENT_DELIVERED:
+                    state.replacement_completed = True
+                    state.replacement_completed_day = event.day
+                    state.replacement_active = False
+                elif event.event_type == EventType.CHARGEBACK_FILED:
+                    state.chargeback_active = True
+                elif event.event_type == EventType.CHARGEBACK_RESOLVED:
+                    state.chargeback_active = False
 
+                # Run invariant checks if registry provided
+                if registry:
+                    step_findings.extend(registry.check_all(state, event, idx))
+
+                all_findings.extend(step_findings)
                 state_after = copy.deepcopy(state)
                 trace = EventTrace(
                     event_index=idx,
@@ -382,7 +466,7 @@ class PolicyEngine:
                     outcome=EffectType.ALLOW,
                     active_rules=[],
                     suppressed_rules=[],
-                    findings=[],
+                    findings=step_findings,
                     state_before=state_before,
                     state_after=state_after,
                     explanation=f"Processed non-decision event {event.event_type.value}.",
@@ -394,7 +478,7 @@ class PolicyEngine:
                     outcome=EffectType.ALLOW,
                     action_applied=True,
                     resolution_type="NON_DECISION",
-                    findings=[],
+                    findings=step_findings,
                 )
                 outcomes.append(outcome)
                 event_traces.append(trace)
@@ -429,11 +513,11 @@ class PolicyEngine:
                 if passed:
                     fired_rules.append(r)
 
-            outcome_effect, res_type, active_ids, suppressed_ids, findings = (
+            outcome_effect, res_type, active_ids, suppressed_ids, resolution_findings = (
                 self._resolve_conflict(fired_rules, idx, event)
             )
 
-            all_findings.extend(findings)
+            step_findings.extend(resolution_findings)
 
             # Apply action semantics if ALLOW
             action_applied = outcome_effect == EffectType.ALLOW
@@ -445,6 +529,7 @@ class PolicyEngine:
                 elif event.event_type == EventType.REPLACEMENT_REQUESTED:
                     state.replacement_requested = True
                     state.replacement_request_day = event.day
+                    state.replacement_active = True
 
                 # Apply state_updates from winning active rules
                 active_rule_objs = [r for r in fired_rules if r.id in active_ids]
@@ -461,7 +546,13 @@ class PolicyEngine:
                 elif event.event_type == EventType.REPLACEMENT_REQUESTED:
                     state.replacement_requested = False
 
+            # Run invariant checks if registry provided
+            if registry:
+                step_findings.extend(registry.check_all(state, event, idx))
+
+            all_findings.extend(step_findings)
             state_after = copy.deepcopy(state)
+
             trace = EventTrace(
                 event_index=idx,
                 day=event.day,
@@ -474,7 +565,7 @@ class PolicyEngine:
                 outcome=outcome_effect,
                 active_rules=active_ids,
                 suppressed_rules=suppressed_ids,
-                findings=findings,
+                findings=step_findings,
                 state_before=state_before,
                 state_after=state_after,
                 explanation=(
@@ -489,7 +580,7 @@ class PolicyEngine:
                 outcome=outcome_effect,
                 action_applied=action_applied,
                 resolution_type=res_type,
-                findings=findings,
+                findings=step_findings,
             )
             outcomes.append(outcome)
             event_traces.append(trace)

@@ -21,6 +21,10 @@ class EventType(str, Enum):
     REPLACEMENT_CANCELLED = "REPLACEMENT_CANCELLED"
     ORDER_CANCELLED = "ORDER_CANCELLED"
     ITEM_DAMAGED_REPORTED = "ITEM_DAMAGED_REPORTED"
+    REFUND_COMPLETED = "REFUND_COMPLETED"
+    REPLACEMENT_DELIVERED = "REPLACEMENT_DELIVERED"
+    CHARGEBACK_FILED = "CHARGEBACK_FILED"
+    CHARGEBACK_RESOLVED = "CHARGEBACK_RESOLVED"
 
 
 class DecisionType(str, Enum):
@@ -83,8 +87,13 @@ class StateField(str, Enum):
     REPLACEMENT_REQUEST_DAY = "replacement_request_day"
     REPLACEMENT_CANCELLED = "replacement_cancelled"
     REPLACEMENT_CANCEL_DAY = "replacement_cancel_day"
+    REPLACEMENT_ACTIVE = "replacement_active"
+    REPLACEMENT_COMPLETED = "replacement_completed"
+    REPLACEMENT_COMPLETED_DAY = "replacement_completed_day"
     REFUND_REQUESTED = "refund_requested"
     REFUND_REQUEST_DAY = "refund_request_day"
+    REFUND_COMPLETED = "refund_completed"
+    REFUND_COMPLETED_DAY = "refund_completed_day"
     RETURN_RECEIVED = "return_received"
     ITEM_DAMAGED = "item_damaged"
     IS_FINAL_SALE = "is_final_sale"
@@ -92,6 +101,9 @@ class StateField(str, Enum):
     CUSTOMER_TIER = "customer_tier"
     REFUND_ELIGIBILITY_RESTORED = "refund_eligibility_restored"
     ACTION_DENIED = "action_denied"
+    AMOUNT_PAID = "amount_paid"
+    REFUND_AMOUNT = "refund_amount"
+    CHARGEBACK_ACTIVE = "chargeback_active"
 
 
 class State(BaseModel):
@@ -105,8 +117,13 @@ class State(BaseModel):
     replacement_request_day: int | None = None
     replacement_cancelled: bool = False
     replacement_cancel_day: int | None = None
+    replacement_active: bool = False
+    replacement_completed: bool = False
+    replacement_completed_day: int | None = None
     refund_requested: bool = False
     refund_request_day: int | None = None
+    refund_completed: bool = False
+    refund_completed_day: int | None = None
     return_received: bool = False
     item_damaged: bool = False
     is_final_sale: bool = False
@@ -114,6 +131,9 @@ class State(BaseModel):
     customer_tier: CustomerTier = CustomerTier.STANDARD
     refund_eligibility_restored: bool = False
     action_denied: bool = False
+    amount_paid: float = 0.0
+    refund_amount: float = 0.0
+    chargeback_active: bool = False
 
     model_config = ConfigDict(extra="forbid")
 
@@ -207,9 +227,19 @@ class Rule(BaseModel):
 class FindingType(str, Enum):
     """Categories of detected policy issues."""
     CONTRADICTION = "CONTRADICTION"
-    GAP = "GAP"
+    POLICY_GAP = "POLICY_GAP"
     AMBIGUITY = "AMBIGUITY"
     INVARIANT_VIOLATION = "INVARIANT_VIOLATION"
+    DEAD_RULE = "DEAD_RULE"
+
+    # Alias for backwards compatibility
+    GAP = "POLICY_GAP"
+
+    @classmethod
+    def _missing_(cls, value: object) -> Any:
+        if value == "GAP":
+            return cls.POLICY_GAP
+        return super()._missing_(value)
 
 
 class FindingSeverity(str, Enum):
