@@ -26,11 +26,18 @@ from policyforge.models import (
     SimulationResult,
 )
 from policyforge.engine import PolicyEngine
-from policyforge.detectors import (
-    InvariantRegistry,
-    create_default_invariant_registry,
-    detect_dead_rules,
-    PolicyDetector,
+from policyforge.shrink import (
+    shrink_journey,
+    ShrinkResult,
+    get_finding_signature,
+)
+from policyforge.scenarios import (
+    Scenario,
+    generate_boundary_scenarios,
+    generate_pairwise_scenarios,
+    validate_scenario,
+    run_suite,
+    SuiteResult,
 )
 
 __all__ = [
@@ -62,4 +69,13 @@ __all__ = [
     "create_default_invariant_registry",
     "detect_dead_rules",
     "PolicyDetector",
+    "shrink_journey",
+    "ShrinkResult",
+    "get_finding_signature",
+    "Scenario",
+    "generate_boundary_scenarios",
+    "generate_pairwise_scenarios",
+    "validate_scenario",
+    "run_suite",
+    "SuiteResult",
 ]
