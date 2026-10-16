@@ -1,0 +1,263 @@
+[
+  {
+    "id": "rule_refund_standard_window",
+    "name": "Standard 14-day refund window",
+    "decision": "REFUND",
+    "trigger": "REFUND_REQUESTED",
+    "when": {
+      "all": [
+        {"field": "days_since_delivery", "op": "LTE", "value": 14},
+        {"field": "item_delivered", "op": "IS_TRUE", "value": true},
+        {"field": "is_final_sale", "op": "IS_FALSE", "value": false}
+      ]
+    },
+    "effect": "ALLOW",
+    "priority": 0,
+    "overrides": [],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Customers may request a refund within 14 days of delivery for non-final sale items."
+    }
+  },
+  {
+    "id": "rule_refund_past_deadline",
+    "name": "Refunds denied after 14 days",
+    "decision": "REFUND",
+    "trigger": "REFUND_REQUESTED",
+    "when": {
+      "field": "days_since_delivery",
+      "op": "GT",
+      "value": 14
+    },
+    "effect": "DENY",
+    "priority": 0,
+    "overrides": [],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Refund requests submitted more than 14 days after delivery are strictly denied."
+    }
+  },
+  {
+    "id": "rule_refund_after_replacement_cancelled",
+    "name": "Refund eligibility upon cancelled replacement",
+    "decision": "REFUND",
+    "trigger": "REFUND_REQUESTED",
+    "when": {
+      "field": "replacement_cancelled",
+      "op": "IS_TRUE",
+      "value": true
+    },
+    "effect": "ALLOW",
+    "priority": 0,
+    "overrides": [],
+    "state_updates": {
+      "refund_eligibility_restored": true
+    },
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "If a replacement order is cancelled, the customer may request a refund."
+    }
+  },
+  {
+    "id": "rule_refund_final_sale_deny",
+    "name": "Final sale items ineligible for refund",
+    "decision": "REFUND",
+    "trigger": "REFUND_REQUESTED",
+    "when": {
+      "field": "is_final_sale",
+      "op": "IS_TRUE",
+      "value": true
+    },
+    "effect": "DENY",
+    "priority": 10,
+    "overrides": ["rule_refund_standard_window"],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Final sale items are not eligible for refunds under any circumstances."
+    }
+  },
+  {
+    "id": "rule_refund_before_delivery_deny",
+    "name": "Refund denied before delivery",
+    "decision": "REFUND",
+    "trigger": "REFUND_REQUESTED",
+    "when": {
+      "field": "item_delivered",
+      "op": "IS_FALSE",
+      "value": false
+    },
+    "effect": "DENY",
+    "priority": 5,
+    "overrides": [],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Refunds cannot be processed before an item is delivered; cancel the order instead."
+    }
+  },
+  {
+    "id": "rule_refund_vip_extended_window",
+    "name": "VIP 30-day refund window",
+    "decision": "REFUND",
+    "trigger": "REFUND_REQUESTED",
+    "when": {
+      "all": [
+        {"field": "customer_tier", "op": "EQ", "value": "VIP"},
+        {"field": "days_since_delivery", "op": "LTE", "value": 30},
+        {"field": "item_delivered", "op": "IS_TRUE", "value": true}
+      ]
+    },
+    "effect": "ALLOW",
+    "priority": 2,
+    "overrides": ["rule_refund_past_deadline"],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "VIP members enjoy an extended 30-day refund window."
+    }
+  },
+  {
+    "id": "rule_refund_opened_item_deny",
+    "name": "Opened non-defective items denied after 7 days",
+    "decision": "REFUND",
+    "trigger": "REFUND_REQUESTED",
+    "when": {
+      "all": [
+        {"field": "item_opened", "op": "IS_TRUE", "value": true},
+        {"field": "customer_tier", "op": "EQ", "value": "STANDARD"},
+        {"field": "item_damaged", "op": "IS_FALSE", "value": false},
+        {"field": "days_since_delivery", "op": "GT", "value": 7}
+      ]
+    },
+    "effect": "DENY",
+    "priority": 1,
+    "overrides": [],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Standard customers cannot return opened non-damaged items after 7 days."
+    }
+  },
+  {
+    "id": "rule_replacement_standard_window",
+    "name": "Standard 30-day replacement window",
+    "decision": "REPLACEMENT",
+    "trigger": "REPLACEMENT_REQUESTED",
+    "when": {
+      "all": [
+        {"field": "days_since_delivery", "op": "LTE", "value": 30},
+        {"field": "item_delivered", "op": "IS_TRUE", "value": true},
+        {"field": "is_final_sale", "op": "IS_FALSE", "value": false}
+      ]
+    },
+    "effect": "ALLOW",
+    "priority": 0,
+    "overrides": [],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Items may be replaced within 30 days of delivery."
+    }
+  },
+  {
+    "id": "rule_replacement_past_deadline",
+    "name": "Replacement denied after 30 days",
+    "decision": "REPLACEMENT",
+    "trigger": "REPLACEMENT_REQUESTED",
+    "when": {
+      "field": "days_since_delivery",
+      "op": "GT",
+      "value": 30
+    },
+    "effect": "DENY",
+    "priority": 0,
+    "overrides": [],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Replacements cannot be requested after 30 days from delivery."
+    }
+  },
+  {
+    "id": "rule_replacement_damaged_override",
+    "name": "Damaged item 45-day replacement extension",
+    "decision": "REPLACEMENT",
+    "trigger": "REPLACEMENT_REQUESTED",
+    "when": {
+      "all": [
+        {"field": "item_damaged", "op": "IS_TRUE", "value": true},
+        {"field": "days_since_delivery", "op": "LTE", "value": 45}
+      ]
+    },
+    "effect": "ALLOW",
+    "priority": 5,
+    "overrides": ["rule_replacement_past_deadline"],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Damaged goods qualify for replacement up to 45 days after delivery."
+    }
+  },
+  {
+    "id": "rule_replacement_final_sale_deny",
+    "name": "Final sale replacement denied",
+    "decision": "REPLACEMENT",
+    "trigger": "REPLACEMENT_REQUESTED",
+    "when": {
+      "field": "is_final_sale",
+      "op": "IS_TRUE",
+      "value": true
+    },
+    "effect": "DENY",
+    "priority": 10,
+    "overrides": ["rule_replacement_standard_window"],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Final sale merchandise cannot be replaced."
+    }
+  },
+  {
+    "id": "rule_replacement_duplicate_request_deny",
+    "name": "Duplicate active replacement denied",
+    "decision": "REPLACEMENT",
+    "trigger": "REPLACEMENT_REQUESTED",
+    "when": {
+      "field": "replacement_requested",
+      "op": "IS_TRUE",
+      "value": true
+    },
+    "effect": "DENY",
+    "priority": 10,
+    "overrides": ["rule_replacement_standard_window"],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Only one active replacement request is permitted per order."
+    }
+  },
+  {
+    "id": "rule_refund_damaged_grace_period",
+    "name": "Damaged items 21-day refund grace period (new in v2)",
+    "decision": "REFUND",
+    "trigger": "REFUND_REQUESTED",
+    "when": {
+      "all": [
+        {"field": "item_damaged", "op": "IS_TRUE", "value": true},
+        {"field": "days_since_delivery", "op": "LTE", "value": 21},
+        {"field": "item_delivered", "op": "IS_TRUE", "value": true}
+      ]
+    },
+    "effect": "ALLOW",
+    "priority": 3,
+    "overrides": ["rule_refund_past_deadline"],
+    "state_updates": null,
+    "source": {
+      "doc_name": "NovaCart Returns Policy v2.0",
+      "verbatim_sentence": "Damaged items are eligible for a refund within 21 days of delivery."
+    }
+  }
+]

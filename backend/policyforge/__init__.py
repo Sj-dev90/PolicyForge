@@ -40,6 +40,17 @@ from policyforge.compiler import (
     check_source_grounding,
     PolicyCompiler,
 )
+from policyforge.diff import (
+    OutcomeChange,
+    FindingDelta,
+    ScenarioDiffResult,
+    CoverageReport,
+    HealthScore,
+    RuleTextDiff,
+    DiffReport,
+    diff_rule_sets,
+    render_rule_text_diff,
+)
 
 __all__ = [
     "EventType",
