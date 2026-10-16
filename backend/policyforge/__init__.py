@@ -31,13 +31,14 @@ from policyforge.shrink import (
     ShrinkResult,
     get_finding_signature,
 )
-from policyforge.scenarios import (
-    Scenario,
-    generate_boundary_scenarios,
-    generate_pairwise_scenarios,
-    validate_scenario,
-    run_suite,
-    SuiteResult,
+from policyforge.llm import LLMClient, LLMCallRecord
+from policyforge.compiler import (
+    Clause,
+    RuleConfidence,
+    CompileReport,
+    split_document_into_clauses,
+    check_source_grounding,
+    PolicyCompiler,
 )
 
 __all__ = [
@@ -78,4 +79,12 @@ __all__ = [
     "validate_scenario",
     "run_suite",
     "SuiteResult",
+    "LLMClient",
+    "LLMCallRecord",
+    "Clause",
+    "RuleConfidence",
+    "CompileReport",
+    "split_document_into_clauses",
+    "check_source_grounding",
+    "PolicyCompiler",
 ]
