@@ -1,0 +1,581 @@
+[
+  {
+    "id": "ls_001",
+    "description": "Standard refund within window: delivered day 0, refund day 15",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 15, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Day 15 is well inside the 30-day window."
+  },
+  {
+    "id": "ls_002",
+    "description": "Refund denied: delivered day 0, refund day 31",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 31, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Day 31 exceeds the 30-day window."
+  },
+  {
+    "id": "ls_003",
+    "description": "Boundary: refund exactly at day 30",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 30, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "LTE 30 means day 30 is still inside window."
+  },
+  {
+    "id": "ls_004",
+    "description": "Final sale item: refund denied regardless of timing",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 5, "payload": {"is_final_sale": true}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Final sale always denied by high-priority rule."
+  },
+  {
+    "id": "ls_005",
+    "description": "VIP extended window: refund at day 50",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {"customer_tier": "VIP"}},
+      {"event_type": "REFUND_REQUESTED", "day": 50, "payload": {"customer_tier": "VIP"}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "VIP gets 60-day window; day 50 qualifies."
+  },
+  {
+    "id": "ls_006",
+    "description": "VIP outside extended window: refund at day 61",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {"customer_tier": "VIP"}},
+      {"event_type": "REFUND_REQUESTED", "day": 61, "payload": {"customer_tier": "VIP"}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Day 61 exceeds VIP 60-day window."
+  },
+  {
+    "id": "ls_007",
+    "description": "Replacement within window: delivered day 0, replacement day 25",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 25, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Standard replacement inside 30-day window."
+  },
+  {
+    "id": "ls_008",
+    "description": "Replacement denied: day 35 after delivery",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 35, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Day 35 exceeds the 30-day replacement window."
+  },
+  {
+    "id": "ls_009",
+    "description": "Canonical journey: delivery, replacement request (allowed), cancel, refund after cancel",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 25, "payload": {}},
+      {"event_type": "REPLACEMENT_CANCELLED", "day": 35, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 36, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": ["CONTRADICTION"],
+    "notes": "Canonical planted contradiction between past_deadline and replacement_cancelled; resolves to DENY with CONTRADICTION finding."
+  },
+  {
+    "id": "ls_010",
+    "description": "Refund before delivery: item not yet delivered",
+    "journey": [
+      {"event_type": "ORDER_PLACED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 2, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Refund denied before delivery per rule_refund_before_delivery_deny."
+  },
+  {
+    "id": "ls_011",
+    "description": "Damaged item replacement inside extended window: day 40",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 3, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 40, "payload": {"item_damaged": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Damaged items get 45-day replacement extension."
+  },
+  {
+    "id": "ls_012",
+    "description": "Damaged item replacement outside extended window: day 46",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 2, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 46, "payload": {"item_damaged": true}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Day 46 exceeds the 45-day damaged-item extension."
+  },
+  {
+    "id": "ls_013",
+    "description": "Final sale replacement denied",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 10, "payload": {"is_final_sale": true}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Final sale items cannot be replaced."
+  },
+  {
+    "id": "ls_014",
+    "description": "Duplicate replacement request denied",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 5, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 7, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Second replacement request is denied when one is already active."
+  },
+  {
+    "id": "ls_015",
+    "description": "Opened non-damaged item refund denied after 14 days (standard tier)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 20, "payload": {"item_opened": true}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Opened non-damaged items denied after 14 days for STANDARD tier."
+  },
+  {
+    "id": "ls_016",
+    "description": "Opened non-damaged item refund allowed within 14 days",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 10, "payload": {"item_opened": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Day 10 is inside the 14-day opened-item window."
+  },
+  {
+    "id": "ls_017",
+    "description": "Order cancelled then refund denied (no delivery)",
+    "journey": [
+      {"event_type": "ORDER_PLACED", "day": 0, "payload": {}},
+      {"event_type": "ORDER_CANCELLED", "day": 1, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 2, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "No delivery means refund rule denies."
+  },
+  {
+    "id": "ls_018",
+    "description": "Return received then refund allowed within window",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "RETURN_RECEIVED", "day": 10, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 12, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Return received; refund within 30-day window."
+  },
+  {
+    "id": "ls_019",
+    "description": "VIP boundary: refund exactly at day 60",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {"customer_tier": "VIP"}},
+      {"event_type": "REFUND_REQUESTED", "day": 60, "payload": {"customer_tier": "VIP"}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "VIP window is LTE 60; day 60 is inside."
+  },
+  {
+    "id": "ls_020",
+    "description": "Replacement at boundary day 30 (standard)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 30, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "LTE 30 means day 30 is the last valid replacement day."
+  },
+  {
+    "id": "ls_021",
+    "description": "Damaged item: refund at day 20 (within window, damaged flag)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 2, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 20, "payload": {"item_damaged": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Damaged item within standard 30-day window."
+  },
+  {
+    "id": "ls_022",
+    "description": "Replacement then delivery then refund within window",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 10, "payload": {}},
+      {"event_type": "REPLACEMENT_DELIVERED", "day": 15, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 20, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Replacement completed; refund still within window from original delivery."
+  },
+  {
+    "id": "ls_023",
+    "description": "Standard refund after chargeback filed",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "CHARGEBACK_FILED", "day": 10, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 12, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Engine allows; SOP-10 not encoded in v1 rules as a deny rule."
+  },
+  {
+    "id": "ls_024",
+    "description": "Gap: replacement requested before delivery (no rule covers pre-delivery replacement)",
+    "journey": [
+      {"event_type": "ORDER_PLACED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 2, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": ["POLICY_GAP"],
+    "notes": "Policy gap: no replacement rule exists for items not yet delivered (unlike refunds, which have rule_refund_before_delivery_deny)."
+  },
+  {
+    "id": "ls_025",
+    "description": "Replacement after cancellation, then re-request within window",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 5, "payload": {}},
+      {"event_type": "REPLACEMENT_CANCELLED", "day": 8, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 20, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Duplicate replacement request rule denies because replacement_requested was already recorded on day 5."
+  },
+  {
+    "id": "ls_026",
+    "description": "Refund denied: opened non-damaged standard at exact day 15",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 15, "payload": {"item_opened": true}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "GT 14 means day 15 is outside the opened-item window."
+  },
+  {
+    "id": "ls_027",
+    "description": "VIP customer, final sale item: refund denied (high-priority override)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {"customer_tier": "VIP"}},
+      {"event_type": "REFUND_REQUESTED", "day": 10, "payload": {"is_final_sale": true, "customer_tier": "VIP"}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Final sale priority 10 overrides VIP window (priority 2)."
+  },
+  {
+    "id": "ls_028",
+    "description": "Replacement final sale boundary: day 5",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 5, "payload": {"is_final_sale": true}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Final sale replacement rule fires at priority 10."
+  },
+  {
+    "id": "ls_029",
+    "description": "Refund at day 1 after delivery",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 1, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Very early refund well within window."
+  },
+  {
+    "id": "ls_030",
+    "description": "Replacement at day 1 after delivery",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 1, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Very early replacement within window."
+  },
+  {
+    "id": "ls_031",
+    "description": "Refund denied: standard tier, exactly day 31",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 31, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "One day past the window."
+  },
+  {
+    "id": "ls_032",
+    "description": "VIP and damaged: replacement at day 44 (both rules apply)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {"customer_tier": "VIP"}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 5, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 44, "payload": {"item_damaged": true, "customer_tier": "VIP"}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Day 44 is inside damaged 45-day window. VIP rule also allows (no conflict)."
+  },
+  {
+    "id": "ls_033",
+    "description": "Damaged item refund at day 29 (standard window)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 3, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 29, "payload": {"item_damaged": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Standard window covers damaged refund at day 29."
+  },
+  {
+    "id": "ls_034",
+    "description": "Multi-event: order placed, delivered, damaged, returned, refund",
+    "journey": [
+      {"event_type": "ORDER_PLACED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DELIVERED", "day": 5, "payload": {}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 6, "payload": {}},
+      {"event_type": "RETURN_RECEIVED", "day": 10, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 12, "payload": {"item_damaged": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Full journey with damage; refund within window from delivery day 5, so days_since_delivery=7."
+  },
+  {
+    "id": "ls_035",
+    "description": "Standard refund exactly at boundary day 0 (same-day delivery and request)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 0, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "days_since_delivery=0, well within window."
+  },
+  {
+    "id": "ls_036",
+    "description": "Replacement denied: final sale + damaged (final sale priority wins)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 1, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 10, "payload": {"is_final_sale": true, "item_damaged": true}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Final sale deny (priority 10) overrides damaged extension (priority 5)."
+  },
+  {
+    "id": "ls_037",
+    "description": "Replacement at day 31 (just over boundary, not damaged)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 31, "payload": {}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "One day past replacement window for standard customer."
+  },
+  {
+    "id": "ls_038",
+    "description": "Refund after chargeback resolved",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "CHARGEBACK_FILED", "day": 5, "payload": {}},
+      {"event_type": "CHARGEBACK_RESOLVED", "day": 8, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 10, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Chargeback resolved; refund within standard window."
+  },
+  {
+    "id": "ls_039",
+    "description": "Refund requested twice: second after completing first",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 5, "payload": {}},
+      {"event_type": "REFUND_COMPLETED", "day": 8, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 10, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": ["INVARIANT_VIOLATION"],
+    "notes": "Second refund request after refund completion triggers completion_requires_prior_request invariant violation."
+  },
+  {
+    "id": "ls_040",
+    "description": "Long journey: order placed day 0, delivered day 10, refund day 39",
+    "journey": [
+      {"event_type": "ORDER_PLACED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DELIVERED", "day": 10, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 39, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Delivered day 10; refund day 39 means days_since_delivery=29, which is inside window (ALLOW)."
+  },
+  {
+    "id": "ls_041",
+    "description": "Replacement denied: standard, day 30, opened and non-damaged",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 30, "payload": {"item_opened": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Replacement has no opened-item restriction in v1 rules; standard window applies."
+  },
+  {
+    "id": "ls_042",
+    "description": "Opened damaged item refund allowed after 14 days",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 2, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 20, "payload": {"item_opened": true, "item_damaged": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Opened deny rule requires item_damaged IS_FALSE; damaged flag prevents that deny."
+  },
+  {
+    "id": "ls_043",
+    "description": "Standard tier, non-opened, refund at day 29 (within window)",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 29, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Day 29 is within the 30-day window."
+  },
+  {
+    "id": "ls_044",
+    "description": "Replacement within 30 days with chargeback active",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "CHARGEBACK_FILED", "day": 3, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 10, "payload": {}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "No replacement rule blocks chargeback-active state; engine allows."
+  },
+  {
+    "id": "ls_045",
+    "description": "VIP tier, opened non-damaged item, day 20: opened-item deny has STANDARD condition",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {"customer_tier": "VIP"}},
+      {"event_type": "REFUND_REQUESTED", "day": 20, "payload": {"item_opened": true, "customer_tier": "VIP"}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "Opened-item deny requires customer_tier=STANDARD; VIP is not affected by that rule."
+  },
+  {
+    "id": "ls_046",
+    "description": "Refund requested at exactly day 14 opened item boundary",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 14, "payload": {"item_opened": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "GT 14 means day 14 is still inside opened-item window."
+  },
+  {
+    "id": "ls_047",
+    "description": "Damaged replacement at boundary day 45",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {}},
+      {"event_type": "ITEM_DAMAGED_REPORTED", "day": 2, "payload": {}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 45, "payload": {"item_damaged": true}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "LTE 45 means day 45 is the last valid day."
+  },
+  {
+    "id": "ls_048",
+    "description": "Canonical journey with VIP: replacement at day 25, cancel at day 35, refund at day 36",
+    "journey": [
+      {"event_type": "ITEM_DELIVERED", "day": 0, "payload": {"customer_tier": "VIP"}},
+      {"event_type": "REPLACEMENT_REQUESTED", "day": 25, "payload": {"customer_tier": "VIP"}},
+      {"event_type": "REPLACEMENT_CANCELLED", "day": 35, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 36, "payload": {"customer_tier": "VIP"}}
+    ],
+    "expected_outcome": "ALLOW",
+    "expected_finding_types": [],
+    "notes": "VIP + cancelled replacement → refund allowed."
+  },
+  {
+    "id": "ls_049",
+    "description": "Order placed and immediately cancelled: no delivery",
+    "journey": [
+      {"event_type": "ORDER_PLACED", "day": 0, "payload": {}},
+      {"event_type": "ORDER_CANCELLED", "day": 0, "payload": {}}
+    ],
+    "expected_outcome": null,
+    "expected_finding_types": [],
+    "notes": "No decision event; no refund/replacement triggered."
+  },
+  {
+    "id": "ls_050",
+    "description": "Refund gap: no delivery, no rules fire for undelivered final sale",
+    "journey": [
+      {"event_type": "ORDER_PLACED", "day": 0, "payload": {}},
+      {"event_type": "REFUND_REQUESTED", "day": 3, "payload": {"is_final_sale": true}}
+    ],
+    "expected_outcome": "DENY",
+    "expected_finding_types": [],
+    "notes": "Item not delivered; final sale deny fires."
+  }
+]
