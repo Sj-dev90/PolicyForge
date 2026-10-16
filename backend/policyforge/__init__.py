@@ -51,6 +51,7 @@ from policyforge.diff import (
     diff_rule_sets,
     render_rule_text_diff,
 )
+from policyforge.api import app
 
 __all__ = [
     "EventType",
@@ -98,4 +99,14 @@ __all__ = [
     "split_document_into_clauses",
     "check_source_grounding",
     "PolicyCompiler",
+    "OutcomeChange",
+    "FindingDelta",
+    "ScenarioDiffResult",
+    "CoverageReport",
+    "HealthScore",
+    "RuleTextDiff",
+    "DiffReport",
+    "diff_rule_sets",
+    "render_rule_text_diff",
+    "app",
 ]
